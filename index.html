@@ -1,0 +1,829 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>识字闯关</title>
+<style>
+:root{--main:#ff8a3d;--ok:#37b26c;--no:#e5484d;--skip:#8b8fa3;--bg:#fff7ec;--ink:#3b3a36}
+*{box-sizing:border-box}
+body{margin:0;font-family:"PingFang SC","Microsoft YaHei",sans-serif;background:var(--bg);color:var(--ink);min-height:100vh;overflow-x:hidden}
+header{display:flex;flex-wrap:wrap;gap:8px;justify-content:space-between;align-items:center;padding:10px 16px;background:#fff;box-shadow:0 2px 6px rgba(0,0,0,.06);position:sticky;top:0;z-index:5}
+header h1{font-size:20px;margin:0}
+nav button{margin-left:6px;padding:8px 12px;font-size:14px}
+button{font:inherit;border:none;border-radius:12px;padding:10px 16px;background:var(--main);color:#fff;cursor:pointer}
+button.ghost{background:#fff;color:var(--ink);border:2px solid #f0d9bf}
+button.rec{background:var(--no)}
+button.rec.on{animation:pulse 1s infinite}
+@keyframes pulse{50%{opacity:.5}}
+main{max-width:920px;margin:0 auto;padding:16px}
+.view{display:none}.view.on{display:block}
+.card{background:#fff;border-radius:18px;padding:16px;margin-bottom:14px;box-shadow:0 2px 8px rgba(0,0,0,.05)}
+.path{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:12px;margin-top:6px}
+.station{background:#fff;border-radius:16px;padding:12px;text-align:center;cursor:pointer;border:2px solid #f3e2cf;position:relative}
+.station:hover{transform:translateY(-2px)}
+.station.done{border-color:var(--ok);background:#f0fbf4}
+.station .num{font-size:18px;font-weight:700}
+.station .pct{font-size:13px;color:#888;margin-top:2px}
+.station .bar{height:6px;background:#eee;border-radius:3px;margin-top:6px;overflow:hidden}
+.station .bar i{display:block;height:100%;background:var(--ok)}
+.station .animal{position:absolute;top:-16px;right:-6px;font-size:30px}
+.big{font-size:180px;text-align:center;line-height:1.1;margin:8px 0;font-family:"STKaiti","KaiTi","PingFang SC",serif}
+.row{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;align-items:center}
+.judge button{min-width:120px;font-size:18px;padding:14px 18px;color:#fff}
+.j-ok{background:var(--ok)}.j-no{background:var(--no)}.j-skip{background:var(--skip)}
+.meta{display:flex;justify-content:space-between;color:#777;font-size:14px;margin-bottom:6px}
+.hidden{display:none!important}
+.grid-chars{display:grid;grid-template-columns:repeat(auto-fill,minmax(56px,1fr));gap:6px}
+.gc{height:56px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:26px;background:#f1efe9;color:#c9c5bb}
+.gc.k{background:#e7f8ec;color:var(--ink)}
+table{width:100%;border-collapse:collapse;font-size:15px;margin-top:8px}
+td,th{padding:8px;border-bottom:1px solid #eee;text-align:left}
+.stat{font-size:28px;font-weight:700;color:var(--main)}
+.label{color:#777;font-size:14px}
+.stats{display:flex;gap:24px;justify-content:center;flex-wrap:wrap;margin:12px 0}
+.stats div{text-align:center}
+.toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:#333;color:#fff;padding:12px 18px;border-radius:12px;z-index:50;display:none;max-width:90%;text-align:center}
+.confetti{position:fixed;top:-20px;width:10px;height:14px;z-index:40;pointer-events:none;animation:fall linear forwards}
+@keyframes fall{to{transform:translateY(110vh) rotate(720deg)}}
+.hop{animation:hop .6s ease 3}
+@keyframes hop{50%{transform:translateY(-22px)}}
+.star{position:fixed;font-size:28px;z-index:40;pointer-events:none;animation:pop 1.4s ease forwards}
+@keyframes pop{0%{transform:scale(.2);opacity:0}30%{opacity:1;transform:scale(1.2)}100%{transform:translateY(-120px) scale(.9);opacity:0}}
+.chapter{border-radius:20px;padding:14px;margin-bottom:16px;border:2px solid rgba(0,0,0,.04)}
+.chapter h3{margin:0 0 10px;font-size:18px}
+.chapter .path{margin-top:0}
+.station .icon{font-size:34px;line-height:1.2}
+.chest{display:flex;flex-direction:column;align-items:center;justify-content:center;border-style:dashed;background:#fffdf5}
+.chest .icon svg{width:76px;height:68px;display:block;margin:0 auto}
+.chest.open{border-color:#f0a500;background:#fff8dc}
+.chest small{color:#888;font-size:12px}
+.stickers{display:grid;grid-template-columns:repeat(auto-fill,minmax(70px,1fr));gap:10px;margin-top:8px}
+.stickers div{background:#fff8dc;border-radius:14px;height:70px;display:flex;align-items:center;justify-content:center;font-size:36px}
+.settings label{display:flex;gap:10px;align-items:center;margin:10px 0;font-size:16px}
+</style>
+</head>
+<body>
+<header>
+  <h1>🐰 识字闯关</h1>
+  <nav>
+    <button data-v="map">闯关地图</button>
+    <button data-v="book">字册</button>
+    <button data-v="history">历史</button>
+    <button data-v="settings">设置</button>
+  </nav>
+</header>
+
+<main>
+  <section id="map" class="view on">
+    <div class="card">
+      <div class="row">
+        <span class="stat" id="totalKnown"></span>
+        <span class="label">个字已认识</span>
+        <button id="reviewBtn" class="ghost">🔁 今日复习</button>
+      </div>
+    </div>
+    <div class="path" id="pathWrap"></div>
+  </section>
+
+  <section id="test" class="view">
+    <div class="card">
+      <div class="meta"><span id="tLevel"></span><span id="tCount"></span><span id="tTime"></span></div>
+      <div class="big" id="bigChar"></div>
+      <div class="row">
+        <button id="recBtn" class="rec">🎤 录音</button>
+        <button id="playBtn" class="ghost hidden">▶ 回听</button>
+      </div>
+    </div>
+    <div class="card row judge">
+      <button class="j-ok" data-r="读对了">✅ 读对了 (1)</button>
+      <button class="j-no" data-r="读错了">❌ 读错了 (2)</button>
+      <button class="j-skip" data-r="没读">➖ 没读 (3)</button>
+    </div>
+    <p class="label" style="text-align:center">家长判断即可，不需要纠正孩子。</p>
+    <div class="row"><button class="ghost" id="quitBtn">先停在这里</button></div>
+  </section>
+
+  <section id="summary" class="view">
+    <div class="card" style="text-align:center">
+      <div id="sumAnimal" style="font-size:64px">🐰</div>
+      <h2 id="sumTitle"></h2>
+      <div class="stats" id="sumStats"></div>
+      <p id="sumNew"></p>
+      <p id="sumPrev" class="label"></p>
+      <p id="sumChest" style="font-size:22px"></p>
+      <p id="sumClear" class="label"></p>
+      <div class="row">
+        <button id="backMap">回到地图</button>
+        <button id="nextLevel" class="ghost">下一关</button>
+      </div>
+    </div>
+  </section>
+
+  <section id="book" class="view">
+    <div class="card">
+      <h2 style="margin-top:0">字册 <span class="label" id="bookCount"></span></h2>
+      <div class="grid-chars" id="bookGrid"></div>
+    </div>
+    <div class="card">
+      <h2 style="margin-top:0">贴纸本 <span class="label" id="stickerCount"></span></h2>
+      <div class="stickers" id="stickerGrid"></div>
+    </div>
+  </section>
+
+  <section id="history" class="view">
+    <div id="histBox"></div>
+  </section>
+
+  <section id="settings" class="view">
+    <div class="card settings">
+      <h2 style="margin-top:0">设置</h2>
+      <label><input type="checkbox" id="s_rec"> 保存录音（每个字保留最近 3 次，某关全部认识后清除该关录音）</label>
+      <label><input type="checkbox" id="s_reduce"> 减少动效</label>
+      <label><input type="checkbox" id="s_sound"> 播放音效（答题反馈与过关欢呼，默认关闭，音量可用电脑或手机音量控制）</label>
+      <p class="label">音效来源（均为 BudgetPixel AI，CC BY 4.0）：<br>
+        过关欢呼：“Lively Kids Celebration Cheer” (https://budgetpixel.com/sfx/lively-kids-celebration-cheer-1e63b8b2)<br>
+        读对了：“Excited Kids Cheer” (https://budgetpixel.com/sfx/excited-kids-cheer-afe04756)<br>
+        读错了 / 没读：“Soft Cartoon Oops Tone” (https://budgetpixel.com/sfx/soft-cartoon-oops-tone-83cd0092)</p>
+    </div>
+    <div class="card">
+      <h2 style="margin-top:0">导出</h2>
+      <div class="row">
+        <button id="exRec">导出测试记录 CSV</button>
+        <button id="exBook" class="ghost">导出字册 CSV</button>
+        <button id="exLevel" class="ghost">导出关卡进度 CSV</button>
+      </div>
+      <p class="label">导出的文件可以导入息流数据库。录音不包含在导出文件中。</p>
+    </div>
+  </section>
+</main>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const PAGES = [
+"一二三人个大山上下小雨天车开火门口月羊只有牛水中风头田土里在日白马手出王子儿女刀木鸟伞鱼瓜气飞虫米云",
+"电石了来玉去回多少问早巴父工力不干几男坐打四五六闪的花朵果比午面高包文分平我连元丁厂目见兔禾是把笑着",
+"看会自己画好爱心也可爸家妈这爷奶们书串球圆形长方正角灯块冰那弓买哪乐谢想抱竹要立耳红色吃香穿身它发衣",
+"他她毛朋友哥弟兄眉鼻光星阳亮今明走兴空两苦牙肚尾你脸黑半呀吗七八九十又很太宝贝和关园生公苗叶林草先岛",
+"嘴眼睛脚腿翅膀羽体没认识颜黄蓝绿粉青紫彩食物尝闻味鲜苦甜什么起运动踢足赛快慢跑步唱歌跳舞吹号讲故事怎",
+"帮找欢担闷急害怕惊哈老师同学校桌椅教室课做给操伸拉举拍抓拥奶寒冷温暖热凉湿雾净到都办渴喝饿饭睡觉累醒",
+"房间帘窗户台视床被处让对姐妹阿姨叔伯姑亲餐盆碗筷盖袋巾杯成用像原菜萝卜豆苹桃杏笋扫地拖洒洗服晒收全呢",
+"还谁商场楼街理店鞋市病医院护士伤纱布针住养放鸡鸭农夫猫狗鼠群汽行交装甲机宇宙船化当该科程航员司蹈军银",
+"客壳救板加油修轮始离遇别海洋流浪波潮雷乌底虾丑斑带宫美岩沙滩挖瓶珠金骨鸥游冲划钓帆篮网最得钩森植树泥",
+"春夏秋冬季熊猴鹿虎狮狐狸狼现总跟柳芽蚯蚓蝴蝶燕蜜蜂民种翻浇肥施除杀如再荷蝌蚪蛙露蜻蜓蝉声音梦森植树泥",
+"晨朝夕落傍晚虹霞追能送过节铃纸烟礼蛋糕娃滴泉溪洼江河湖清神奇求棵根枝枯皮啄鸦松活历期昨新年表时数字久",
+"响听叫叹喊欠吸呼说话坡注意路停辆道直定幸影样边外远近左右前后蜘蛛蚊洞丝蚂蚁蛇壁怪队进铁站入票扶乘座位",
+"城向南极以图东西邓为困感卫悄应象器逃吵北因迎知却忙投思名片国作业息更告舍留诉赶塔未万千领结错百然忽从",
+"愿约忘答越尖摇往龙夜坏低吐每破争代精团但围吓斗改齐互重丽吧接准备参换休灭鸣背按拿报秀迷量陆升弯软李艘",
+"睁睁古屋攻官观首史众劳主汗庆墙铜诗砍造祝捉杨安藏烧真匹散捕眨眠转京苏壮景望张雁许诚实堆雪梅兰淡念乡初",
+"村稻秧牧喜贴梢岁野压扑啦格拔练选骄傲共第仔细夸掉笔旁束脱及功舰招岸冻沉倒候且另捡即静题法所难深些淋积",
+"令本尔才浮摆推闭变条舟胖失棉妙替语言透聪仿佛班辨非常介论脑摘旗飘点广无坪居澡梳各伙伴排貌搭谷满母至世",
+"霜肉颗采取玩算照纯耍趣懂捧寸习合记阴情必顾归件孩专渐泪整请惜尊界读桥句短轰复童双轻泡躺柔龄赞虚垂展勾",
+"速度铅灰亿已巨查蚜经驶绝引亚吾忠环技保术敌寻消志夺于终凤凰禅隐使纺织披灵仍池吞而际管规府议莲宽级之列",
+"战命枪突丢咬夹质式助漂泊漫刚糟假钢将俩哇贫饱饥族孙祖密炉冈牢容易死特希其弹扮哨并芬芳栽独弱拐治阵寿宜",
+"股写枫柏坛何杜鹃茂井埋刨腰蹲由迈信恩探须计需绕稀指哄概粒微册钟敬割宣席申架搬建梁泞岭趴砸骗末锋迹冒沟",
+"勇敢荡滚涌跃借尺稠啊解杆蹦闹宁靠与提嘻优砖辉煌瓦琴示周份您显躲艳巧摸隔薄秤刘华吴迟怦鼓尽牵弄挂便盼曲",
+"乎央次胡顺利稳粗戏熟纷烁补哗止娘丰克棋称刻导缸断脆折斤革单挑唤怅托卖乱钉省伟尤创区层丹州郊激斜抽嫌懒",
+"顶徐尘慌永切碰够盏线醉印灾含汪荣宿福抬竿洁艺晴朗品浅盛纹产陈赢胜良沿丛厚富涛扎扁英雄贺峡川扬奔碧部劲",
+"甩拦降胆踪决刺汤茶粽察扇猛萤贵评钱孔掌虽刷擦皂遍检暑旅晶杉桦裙脖臂镜鬼据反戴详猜梧桐疆桂桑麦雀塘幅锦",
+"泡姓氏邻龟性瓢炸甘舌毁淹守曹玲傻善扛窝粮翠拨咕咚掰炮端绳偏鞭萍严幼义迁支孤凝锻炼词爬酷棍具通耐鹰翔辛"
+];
+
+const LEVELS = [];
+const seen = new Set();
+PAGES.forEach(p => {
+  const arr = [];
+  [...p].forEach(c => { if (!seen.has(c)) { seen.add(c); arr.push(c); } });
+  LEVELS.push(arr);
+});
+const ALL = LEVELS.flat();
+const TOTAL = ALL.length;
+const LEVEL_OF = {};
+LEVELS.forEach((arr, i) => arr.forEach(c => LEVEL_OF[c] = i + 1));
+
+const COLORS = ['#ff8a3d','#37b26c','#4dabf7','#f06595','#ffd43b','#9775fa'];
+const ANIMALS = ['🐰','🐥','🐻','🦊','🐯','🐼','🐨','🦁','🐸','🐵'];
+const DEVICE = /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent) ? '手机' : '电脑';
+
+const $ = s => document.querySelector(s);
+const pad = n => String(n).padStart(2, '0');
+const todayStr = () => { const d = new Date(); return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()); };
+
+const LS = {
+  get(k, d) { try { const v = localStorage.getItem('zishi.' + k); return v ? JSON.parse(v) : d; } catch (e) { return d; } },
+  set(k, v) { localStorage.setItem('zishi.' + k, JSON.stringify(v)); }
+};
+let records = LS.get('records', []);
+let known = LS.get('known', {});
+let levelDone = LS.get('levelDone', {});
+let lastDone = LS.get('lastDone', null);
+let settings = Object.assign({ rec: true, reduce: false, sound: false }, LS.get('settings', {}));
+const saveRecords = () => LS.set('records', records);
+const saveKnown = () => LS.set('known', known);
+
+const ICONS = ['🌳','🍄','🐦','🌸','🦌','🐚','🦀','🐠','⛵','🐙','🐔','🐷','🚜','🌽','🐄','🏠','🚗','🏥','🏫','🏪','☁️','🌙','⭐','🌈','🚀','👑'];
+const CHAPTERS = [
+  { name: '森林', from: 1, to: 5, bg: '#e3f7d8' },
+  { name: '海边', from: 6, to: 10, bg: '#d8f1ff' },
+  { name: '农场', from: 11, to: 15, bg: '#fff4cf' },
+  { name: '城市', from: 16, to: 20, bg: '#ebe7ff' },
+  { name: '天空', from: 21, to: 26, bg: '#e4f0ff' }
+];
+const TREASURE_MSGS = ['你真厉害，又认识了一大批字！', '字越来越多，你的小宝库在变大！', '坚持就是力量，继续加油！', '又向前走了一大步，太棒了！', '这一段你完成得很棒！'];
+const STICKERS = ['🌟','🎈','🍎','🚀','🦋','🌈','🧸','🎨','🍭','🐳','🌻','🎵'];
+let chests = LS.get('chests', {});
+
+function toast(msg) {
+  const t = $('#toast');
+  t.textContent = msg;
+  t.style.display = 'block';
+  clearTimeout(toast.t);
+  toast.t = setTimeout(() => t.style.display = 'none', 3000);
+}
+
+function show(id) {
+  document.querySelectorAll('.view').forEach(v => v.classList.toggle('on', v.id === id));
+}
+
+let dbp = null;
+function db() {
+  if (!dbp) dbp = new Promise((res, rej) => {
+    const r = indexedDB.open('zishi-audio', 1);
+    r.onupgradeneeded = () => {
+      const s = r.result.createObjectStore('audio', { keyPath: 'id' });
+      s.createIndex('char', 'char');
+      s.createIndex('level', 'level');
+    };
+    r.onsuccess = () => res(r.result);
+    r.onerror = () => rej(r.error);
+  });
+  return dbp;
+}
+function idb(mode, fn) {
+  return db().then(d => new Promise((res, rej) => {
+    const t = d.transaction('audio', mode);
+    const req = fn(t.objectStore('audio'));
+    t.oncomplete = () => res(req ? req.result : undefined);
+    t.onerror = () => rej(t.error);
+  }));
+}
+const putAudio = obj => idb('readwrite', s => s.put(obj));
+const getAudio = id => idb('readonly', s => s.get(id));
+const audioByChar = ch => idb('readonly', s => s.index('char').getAll(ch));
+const deleteAudio = id => idb('readwrite', s => s.delete(id));
+
+async function trimAudio(ch) {
+  const list = (await audioByChar(ch)).sort((a, b) => b.ts - a.ts);
+  const keep = new Set(list.slice(0, 3).map(a => a.id));
+  for (const old of list.slice(3)) await deleteAudio(old.id);
+  records.forEach(r => { if (r.char === ch && r.audioId && !keep.has(r.audioId)) r.audioId = null; });
+  saveRecords();
+}
+
+async function clearLevelAudio(lv) {
+  const ids = await idb('readonly', s => s.index('level').getAllKeys(lv));
+  for (const id of ids) await deleteAudio(id);
+  records.forEach(r => { if (r.level === lv) r.audioId = null; });
+  saveRecords();
+}
+
+let stream = null, recorder = null, chunks = [], recording = false;
+async function startRec() {
+  if (!navigator.mediaDevices || !window.MediaRecorder) { toast('这个浏览器不支持录音，可以换成 Chrome 或 Safari'); return false; }
+  try {
+    stream = stream || await navigator.mediaDevices.getUserMedia({ audio: true });
+  } catch (e) {
+    toast('需要允许使用麦克风才能录音');
+    return false;
+  }
+  chunks = [];
+  recorder = new MediaRecorder(stream);
+  recorder.ondataavailable = e => { if (e.data.size) chunks.push(e.data); };
+  recorder.start();
+  recording = true;
+  return true;
+}
+function stopRec() {
+  return new Promise(res => {
+    if (!recorder || recorder.state === 'inactive') { recording = false; res(null); return; }
+    recorder.onstop = () => {
+      recording = false;
+      res(chunks.length ? new Blob(chunks, { type: recorder.mimeType }) : null);
+    };
+    recorder.stop();
+  });
+}
+function stopStream() {
+  if (stream) { stream.getTracks().forEach(t => t.stop()); stream = null; }
+}
+
+let S = null;
+
+function lvKnownCount(lv) { return LEVELS[lv - 1].filter(c => known[c]).length; }
+function lvPct(lv) { return Math.round(lvKnownCount(lv) / LEVELS[lv - 1].length * 100); }
+
+function renderMap() {
+  $('#totalKnown').textContent = Object.keys(known).length + ' / ' + TOTAL;
+  let last = 0;
+  LEVELS.forEach((_, i) => { if (lvKnownCount(i + 1) > 0) last = i; });
+  const wrap = $('#pathWrap');
+  wrap.innerHTML = '';
+  CHAPTERS.forEach(ch => {
+    const box = document.createElement('div');
+    box.className = 'chapter';
+    box.style.background = ch.bg;
+    box.innerHTML = `<h3>${ch.name}（第${ch.from}–${ch.to}关）</h3>`;
+    const path = document.createElement('div');
+    path.className = 'path';
+    for (let lv = ch.from; lv <= ch.to; lv++) {
+      const i = lv - 1, p = lvPct(lv);
+      const d = document.createElement('div');
+      d.className = 'station' + (p === 100 ? ' done' : '');
+      d.innerHTML = `<div class="icon">${ICONS[i]}</div><div class="num">第${lv}关</div><div class="pct">${p}%</div><div class="bar"><i style="width:${p}%"></i></div>`;
+      if (i === last) {
+        const a = document.createElement('span');
+        a.className = 'animal';
+        a.textContent = ANIMALS[i % ANIMALS.length];
+        d.appendChild(a);
+      }
+      d.onclick = () => tryStart(lv);
+      path.appendChild(d);
+      if (lv % 5 === 0 && lv < LEVELS.length) {
+        const c = document.createElement('div');
+        const got = chests[lv];
+        c.className = 'station chest' + (got ? ' open' : '');
+        c.innerHTML = got
+          ? `<div class="icon">${chestSVG(true)}</div><div class="num">${got.s}</div><small>宝箱已打开</small>`
+          : `<div class="icon">${chestSVG(false)}</div><div class="num">宝箱</div><small>第${lv}关后开启</small>`;
+        c.onclick = () => toast(got ? `第${lv}关的宝箱：${got.s} ${got.m}` : `完成第${lv}关，就能打开这个宝箱`);
+        path.appendChild(c);
+      }
+    }
+    box.appendChild(path);
+    wrap.appendChild(box);
+  });
+}
+
+let chestSeq = 0;
+function chestSVG(open) {
+  const id = 'cg' + (chestSeq++);
+  const defs = `<defs><linearGradient id="${id}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff3a3"/><stop offset=".5" stop-color="#ffc83d"/><stop offset="1" stop-color="#d98e00"/></linearGradient></defs>`;
+  const face = `<circle cx="38" cy="62" r="3.5" fill="#6b4a00"/><circle cx="62" cy="62" r="3.5" fill="#6b4a00"/><path d="M45 70 Q50 75 55 70" stroke="#6b4a00" stroke-width="2.5" fill="none" stroke-linecap="round"/>`;
+  const body = `<rect x="12" y="44" width="76" height="40" rx="8" fill="url(#${id})" stroke="#b87400" stroke-width="3"/><rect x="12" y="58" width="76" height="4" fill="#b87400" opacity=".35"/>`;
+  const lock = `<rect x="43" y="46" width="14" height="18" rx="3" fill="#fff6c2" stroke="#b87400" stroke-width="2"/><circle cx="50" cy="55" r="2.5" fill="#b87400"/>`;
+  const shine = `<path d="M22 50 L26 50 L24 46 Z" fill="#fff"/><text x="78" y="26" font-size="12">✨</text><text x="6" y="24" font-size="12">✨</text>`;
+  if (!open) return `<svg viewBox="0 0 100 90" xmlns="http://www.w3.org/2000/svg">${defs}${body}<path d="M10 44 Q10 22 50 22 Q90 22 90 44 Z" fill="url(#${id})" stroke="#b87400" stroke-width="3"/><rect x="10" y="41" width="80" height="6" fill="#b87400" opacity=".35"/>${lock}${face}</svg>`;
+  return `<svg viewBox="0 0 100 90" xmlns="http://www.w3.org/2000/svg">${defs}<ellipse cx="50" cy="46" rx="36" ry="9" fill="#ffe066"/><circle cx="36" cy="38" r="6" fill="#ffd93d" stroke="#b87400" stroke-width="2"/><circle cx="50" cy="32" r="7" fill="#ffd93d" stroke="#b87400" stroke-width="2"/><circle cx="64" cy="38" r="6" fill="#ffd93d" stroke="#b87400" stroke-width="2"/>${body}<path d="M16 26 Q16 4 50 4 Q84 4 84 26 Z" fill="url(#${id})" stroke="#b87400" stroke-width="3" transform="rotate(-20 50 26)"/>${face}${shine}</svg>`;
+}
+
+function openChest(lv) {
+  const s = STICKERS[Math.floor(Math.random() * STICKERS.length)];
+  const m = TREASURE_MSGS[(lv / 5 - 1) % TREASURE_MSGS.length];
+  chests[lv] = { s, m, date: todayStr() };
+  LS.set('chests', chests);
+  return chests[lv];
+}
+
+function tryStart(lv) {
+  if (lastDone && lastDone.date === todayStr()) {
+    if (!confirm('今天已经测过一关啦，明天再来吧。\n\n如果是家长确认要继续，请点"确定"。')) return;
+  }
+  begin('level', lv, LEVELS[lv - 1].slice());
+}
+
+function begin(kind, lv, queue) {
+  S = { kind, lv, queue, i: 0, results: [], newList: [], sid: Date.now(), blob: null, busy: false, recTimer: null, warned: false, start: Date.now() };
+  S.clock = setInterval(tick, 1000);
+  $('#tLevel').textContent = kind === 'review' ? '复习' : `第${lv}关`;
+  show('test');
+  tick();
+  showCard();
+}
+
+function tick() {
+  if (!S) return;
+  const sec = Math.floor((Date.now() - S.start) / 1000);
+  $('#tTime').textContent = pad(Math.floor(sec / 60)) + ':' + pad(sec % 60);
+  if (!S.warned && sec >= 300) {
+    S.warned = true;
+    toast('已经 5 分钟啦，可以先停一下，这关测完再停也可以');
+  }
+}
+
+function showCard() {
+  const ch = S.queue[S.i];
+  $('#bigChar').textContent = ch;
+  $('#tCount').textContent = `${S.i + 1} / ${S.queue.length}`;
+  S.blob = null;
+  const rb = $('#recBtn');
+  rb.textContent = '🎤 录音';
+  rb.classList.remove('on');
+  rb.classList.toggle('hidden', !settings.rec);
+  $('#playBtn').classList.add('hidden');
+}
+
+async function toggleRec() {
+  if (!S || !settings.rec) return;
+  const rb = $('#recBtn');
+  if (!recording) {
+    const ok = await startRec();
+    if (!ok) return;
+    rb.classList.add('on');
+    rb.textContent = '⏹ 停止录音';
+    S.recTimer = setTimeout(() => { if (recording) toggleRec(); }, 4000);
+  } else {
+    clearTimeout(S.recTimer);
+    S.blob = await stopRec();
+    rb.classList.remove('on');
+    rb.textContent = '🎤 再录一次';
+    $('#playBtn').classList.toggle('hidden', !S.blob);
+  }
+}
+
+async function judge(result) {
+  if (!S || S.busy) return;
+  S.busy = true;
+  clearTimeout(S.recTimer);
+  let blob = S.blob;
+  if (recording) blob = await stopRec();
+  const ch = S.queue[S.i];
+  const now = new Date();
+  const today = todayStr();
+  const lv = S.kind === 'review' ? LEVEL_OF[ch] : S.lv;
+  let audioId = null;
+  try {
+    if (blob && settings.rec) {
+      audioId = now.getTime() + '-' + ch;
+      await putAudio({ id: audioId, char: ch, level: lv, ts: now.getTime(), blob });
+      await trimAudio(ch);
+    }
+  } catch (e) {
+    toast('录音保存失败，文字结果仍会保存');
+    audioId = null;
+  }
+  records.push({ sid: S.sid, date: today, time: now.toISOString(), level: lv, char: ch, result, device: DEVICE, review: S.kind === 'review', audioId });
+  saveRecords();
+  if (result === '读对了') {
+    if (!known[ch]) { known[ch] = { first: today, last: today }; S.newList.push(ch); }
+    else known[ch].last = today;
+    saveKnown();
+  }
+  if (settings.sound) playFeedback(result);
+  S.results.push({ ch, result });
+  S.blob = null;
+  S.busy = false;
+  S.i++;
+  if (S.i >= S.queue.length) finish();
+  else showCard();
+}
+
+function levelRates(lv) {
+  const m = {};
+  records.filter(r => r.level === lv && !r.review).forEach(r => {
+    const s = m[r.sid] || (m[r.sid] = { sid: r.sid, t: 0, ok: 0 });
+    s.t++;
+    if (r.result === '读对了') s.ok++;
+  });
+  return Object.values(m).map(s => ({ sid: s.sid, pct: Math.round(s.ok / s.t * 100) })).sort((a, b) => a.sid - b.sid);
+}
+
+function finish() {
+  clearInterval(S.clock);
+  stopStream();
+  const lv = S.kind === 'review' ? null : S.lv;
+  const okN = S.results.filter(r => r.result === '读对了').length;
+  const pct = Math.round(okN / S.results.length * 100);
+  let p = 0, prevTxt = '';
+  if (S.kind === 'level') {
+    lastDone = { date: todayStr(), level: lv };
+    LS.set('lastDone', lastDone);
+    const prev = levelRates(lv).filter(s => s.sid < S.sid).pop();
+    prevTxt = prev
+      ? `读对率：上次 ${prev.pct}% → 这次 ${pct}%（${pct - prev.pct >= 0 ? '+' : ''}${pct - prev.pct}%）`
+      : `读对率：这次 ${pct}%（第一次测，已记为基线）`;
+    p = lvPct(lv);
+    if (p === 100 && !levelDone[lv]) {
+      levelDone[lv] = todayStr();
+      LS.set('levelDone', levelDone);
+    }
+    if (p === 100) clearLevelAudio(lv);
+  }
+  let chest = null;
+  if (S.kind === 'level' && lv % 5 === 0 && lv < LEVELS.length && !chests[lv]) chest = openChest(lv);
+  const strength = (p === 100 || pct >= 80 || chest) ? 2 : 1;
+
+  $('#sumTitle').textContent = S.kind === 'review' ? '复习完成啦！' : (p === 100 ? `🎉 第${lv}关全部认识！` : `第${lv}关测完啦！`);
+  let stats = `<div><div class="stat">${S.newList.length}</div><div class="label">本次新认识</div></div>`
+    + `<div><div class="stat">${pct}%</div><div class="label">本次读对率</div></div>`
+    + `<div><div class="stat">${Object.keys(known).length}</div><div class="label">累计认识</div></div>`;
+  if (S.kind === 'level') stats += `<div><div class="stat">${p}%</div><div class="label">本关完成度</div></div>`;
+  $('#sumStats').innerHTML = stats;
+  $('#sumNew').textContent = S.newList.length ? '新认识：' + S.newList.join(' ') : '这次没有新的字，没关系，下次再来。';
+  $('#sumPrev').textContent = prevTxt;
+  $('#sumChest').textContent = chest ? `🎁 宝箱打开啦！得到贴纸 ${chest.s}，${chest.m}` : '';
+  $('#sumClear').textContent = p === 100 ? '这一关的录音已清除，文字记录都保留着。' : '';
+  $('#sumAnimal').textContent = ANIMALS[(lv ? lv - 1 : 0) % ANIMALS.length];
+  $('#nextLevel').classList.toggle('hidden', S.kind !== 'level' || lv >= LEVELS.length);
+  $('#nextLevel').onclick = () => { S = null; tryStart(lv + 1); };
+  show('summary');
+  celebrate(strength);
+  S = null;
+}
+
+function celebrate(strength) {
+  if (settings.sound) playCheer();
+  if (settings.reduce || matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  const a = $('#sumAnimal');
+  a.classList.remove('hop');
+  void a.offsetWidth;
+  a.classList.add('hop');
+  if (strength === 2) burst(100);
+  const n = strength === 2 ? 14 : 6;
+  for (let i = 0; i < n; i++) {
+    const s = document.createElement('div');
+    s.className = 'star';
+    s.textContent = ['⭐', '🌟', '✨', '🎉'][i % 4];
+    s.style.left = (10 + Math.random() * 80) + 'vw';
+    s.style.top = (20 + Math.random() * 50) + 'vh';
+    document.body.appendChild(s);
+    setTimeout(() => s.remove(), 1500);
+  }
+}
+
+function burst(n) {
+  for (let i = 0; i < n; i++) {
+    const c = document.createElement('div');
+    c.className = 'confetti';
+    c.style.left = Math.random() * 100 + 'vw';
+    c.style.background = COLORS[i % COLORS.length];
+    c.style.animationDuration = (2 + Math.random() * 2) + 's';
+    c.style.animationDelay = Math.random() * 0.8 + 's';
+    document.body.appendChild(c);
+    setTimeout(() => c.remove(), 5000);
+  }
+}
+
+function playCheer() {
+  const a = new Audio('cheer.wav');
+  a.play().catch(() => cheer());
+}
+
+function playFeedback(result) {
+  const a = new Audio(result === '读对了' ? 'correct.wav' : 'oops.wav');
+  a.play().catch(() => {});
+}
+
+function cheer() {
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const t0 = ctx.currentTime + 0.05;
+    const master = ctx.createDynamicsCompressor();
+    master.threshold.value = -14;
+    master.ratio.value = 4;
+    master.connect(ctx.destination);
+
+    const irLen = ctx.sampleRate * 1.6;
+    const ir = ctx.createBuffer(2, irLen, ctx.sampleRate);
+    for (let c = 0; c < 2; c++) {
+      const data = ir.getChannelData(c);
+      for (let i = 0; i < irLen; i++) data[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / irLen, 3);
+    }
+    const verb = ctx.createConvolver();
+    verb.buffer = ir;
+    const wet = ctx.createGain();
+    wet.gain.value = 0.3;
+    verb.connect(wet);
+    wet.connect(master);
+
+    const clapLen = Math.floor(ctx.sampleRate * 0.04);
+    const clapBuf = ctx.createBuffer(1, clapLen, ctx.sampleRate);
+    const cd = clapBuf.getChannelData(0);
+    for (let i = 0; i < clapLen; i++) cd[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / clapLen, 6);
+    for (let k = 0; k < 42; k++) {
+      const progress = k / 42;
+      const t = t0 + 0.05 + Math.pow(progress, 0.8) * 1.9 + Math.random() * 0.04;
+      const src = ctx.createBufferSource();
+      src.buffer = clapBuf;
+      const bp = ctx.createBiquadFilter();
+      bp.type = 'bandpass';
+      bp.frequency.value = 1800 + Math.random() * 1600;
+      bp.Q.value = 0.9;
+      const g = ctx.createGain();
+      const amp = (0.25 + Math.random() * 0.25) * (progress < 0.85 ? 1 : 0.5);
+      g.gain.value = amp;
+      src.connect(bp);
+      bp.connect(g);
+      g.connect(master);
+      g.connect(verb);
+      src.start(t);
+    }
+
+    const crowdLen = Math.floor(ctx.sampleRate * 2.6);
+    const cb = ctx.createBuffer(1, crowdLen, ctx.sampleRate);
+    const crowdData = cb.getChannelData(0);
+    for (let i = 0; i < crowdLen; i++) crowdData[i] = Math.random() * 2 - 1;
+    const crowd = ctx.createBufferSource();
+    crowd.buffer = cb;
+    const lp = ctx.createBiquadFilter();
+    lp.type = 'lowpass';
+    lp.frequency.value = 900;
+    const cg = ctx.createGain();
+    cg.gain.setValueAtTime(0.0001, t0);
+    cg.gain.exponentialRampToValueAtTime(0.09, t0 + 0.4);
+    cg.gain.exponentialRampToValueAtTime(0.05, t0 + 1.6);
+    cg.gain.exponentialRampToValueAtTime(0.0001, t0 + 2.6);
+    crowd.connect(lp);
+    lp.connect(cg);
+    cg.connect(master);
+    crowd.start(t0);
+    crowd.stop(t0 + 2.6);
+
+    [[480, 0.15], [600, 0.42], [540, 0.66]].forEach(([f, off]) => {
+      const s = t0 + off;
+      const o = ctx.createOscillator();
+      o.type = 'sawtooth';
+      o.frequency.setValueAtTime(f, s);
+      o.frequency.exponentialRampToValueAtTime(f * 1.3, s + 0.35);
+      const f1 = ctx.createBiquadFilter();
+      f1.type = 'bandpass';
+      f1.frequency.value = 800;
+      f1.Q.value = 3;
+      const f2 = ctx.createBiquadFilter();
+      f2.type = 'bandpass';
+      f2.frequency.value = 1900;
+      f2.Q.value = 4;
+      const g = ctx.createGain();
+      g.gain.setValueAtTime(0.0001, s);
+      g.gain.exponentialRampToValueAtTime(0.22, s + 0.06);
+      g.gain.exponentialRampToValueAtTime(0.0001, s + 0.5);
+      o.connect(f1);
+      o.connect(f2);
+      f1.connect(g);
+      f2.connect(g);
+      g.connect(master);
+      g.connect(verb);
+      o.start(s);
+      o.stop(s + 0.55);
+    });
+
+    [1047, 1319, 1568].forEach((f, i) => {
+      const s = t0 + 1.25 + i * 0.09;
+      const o = ctx.createOscillator();
+      const g = ctx.createGain();
+      o.type = 'sine';
+      o.frequency.value = f;
+      g.gain.setValueAtTime(0.0001, s);
+      g.gain.exponentialRampToValueAtTime(0.15, s + 0.01);
+      g.gain.exponentialRampToValueAtTime(0.0001, s + 0.9);
+      o.connect(g);
+      g.connect(master);
+      g.connect(verb);
+      o.start(s);
+      o.stop(s + 0.95);
+    });
+
+    setTimeout(() => ctx.close(), 4000);
+  } catch (e) {}
+}
+
+function buildReview() {
+  const day = 86400000, now = Date.now();
+  const tested = new Set(records.map(r => r.char));
+  const unknownList = [], oldKnown = [];
+  tested.forEach(c => {
+    const k = known[c];
+    if (!k) unknownList.push(c);
+    else if (now - Date.parse(k.last) >= 7 * day) oldKnown.push(c);
+  });
+  return unknownList.concat(oldKnown).slice(0, 50);
+}
+
+function leaveTest() {
+  if (!S) return;
+  clearInterval(S.clock);
+  clearTimeout(S.recTimer);
+  if (recording && recorder) { recorder.onstop = null; try { recorder.stop(); } catch (e) {} }
+  recording = false;
+  stopStream();
+  S = null;
+}
+
+function renderBook() {
+  $('#bookCount').textContent = `已认识 ${Object.keys(known).length} / ${TOTAL}`;
+  const g = $('#bookGrid');
+  g.innerHTML = '';
+  ALL.forEach(c => {
+    const d = document.createElement('div');
+    d.className = 'gc' + (known[c] ? ' k' : '');
+    d.textContent = known[c] ? c : '·';
+    if (known[c]) d.title = '首次认识：' + known[c].first;
+    g.appendChild(d);
+  });
+  const sg = $('#stickerGrid');
+  const got = Object.keys(chests).sort((a, b) => a - b).map(k => chests[k]);
+  $('#stickerCount').textContent = `共 ${got.length} 枚`;
+  sg.innerHTML = got.length ? '' : '<p class="label">完成第 5、10、15、20、25 关，就能打开宝箱，得到贴纸。</p>';
+  got.forEach(c => {
+    const d = document.createElement('div');
+    d.textContent = c.s;
+    d.title = '获得日期：' + c.date;
+    sg.appendChild(d);
+  });
+}
+
+function renderHistory() {
+  const box = $('#histBox');
+  box.innerHTML = '';
+  const groups = {};
+  records.forEach(r => { const k = r.sid || 'old'; (groups[k] = groups[k] || []).push(r); });
+  const keys = Object.keys(groups).sort((a, b) => (Number(b) || 0) - (Number(a) || 0));
+  if (!keys.length) { box.innerHTML = '<p class="label">还没有测试记录。</p>'; return; }
+  keys.forEach(k => {
+    const rs = groups[k], r0 = rs[0];
+    const ok = rs.filter(x => x.result === '读对了').length;
+    const card = document.createElement('div');
+    card.className = 'card';
+    card.innerHTML = `<div class="row" style="justify-content:space-between;cursor:pointer"><b>${r0.date} · ${r0.review ? '复习' : '第' + r0.level + '关'}</b><span>读对 ${ok} / ${rs.length}</span></div>`;
+    const det = document.createElement('div');
+    det.className = 'hidden';
+    det.innerHTML = '<table><tr><th>字</th><th>结果</th><th>录音</th></tr>' + rs.map(x =>
+      `<tr><td style="font-size:22px">${x.char}</td><td>${x.result}</td><td>${x.audioId ? `<button class="ghost" data-a="${x.audioId}">▶ 回听</button>` : '—'}</td></tr>`
+    ).join('') + '</table>';
+    card.appendChild(det);
+    card.firstElementChild.onclick = () => det.classList.toggle('hidden');
+    box.appendChild(card);
+  });
+}
+
+async function playAudio(id) {
+  const a = await getAudio(id);
+  if (!a) { toast('这次的录音已清除，文字记录保留'); return; }
+  new Audio(URL.createObjectURL(a.blob)).play();
+}
+
+function exportCSV(name, rows) {
+  const csv = '\ufeff' + rows.map(r => r.map(v => `"${String(v ?? '').replace(/"/g, '""')}"`).join(',')).join('\r\n');
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
+  a.download = name;
+  a.click();
+}
+
+document.querySelectorAll('nav button[data-v]').forEach(b => b.onclick = () => {
+  const v = b.dataset.v;
+  leaveTest();
+  if (v === 'map') renderMap();
+  if (v === 'book') renderBook();
+  if (v === 'history') renderHistory();
+  show(v);
+});
+
+document.querySelectorAll('[data-r]').forEach(b => b.onclick = () => judge(b.dataset.r));
+$('#recBtn').onclick = toggleRec;
+$('#playBtn').onclick = () => { if (S && S.blob) new Audio(URL.createObjectURL(S.blob)).play(); };
+$('#quitBtn').onclick = () => { leaveTest(); renderMap(); show('map'); toast('已保存到这里，下次可以接着测'); };
+$('#backMap').onclick = () => { renderMap(); show('map'); };
+$('#reviewBtn').onclick = () => {
+  const list = buildReview();
+  if (!list.length) { toast('暂时没有需要复习的字'); return; }
+  begin('review', null, list);
+};
+$('#histBox').onclick = e => { if (e.target.dataset.a) playAudio(e.target.dataset.a); };
+
+['rec', 'reduce', 'sound'].forEach(k => {
+  const el = $('#s_' + k);
+  el.checked = !!settings[k];
+  el.onchange = () => {
+    settings[k] = el.checked;
+    LS.set('settings', settings);
+    if (k === 'rec' && S) showCard();
+  };
+});
+
+$('#exRec').onclick = () => exportCSV(`识字测试记录_${todayStr()}.csv`, [
+  ['日期', '关卡', '字', '结果', '设备'],
+  ...records.map(r => [r.date, r.review ? '复习' : r.level, r.char, r.result, r.device])
+]);
+$('#exBook').onclick = () => exportCSV(`识字字册_${todayStr()}.csv`, [
+  ['字', '关卡', '首次认识日期', '最近读对日期'],
+  ...ALL.filter(c => known[c]).map(c => [c, LEVEL_OF[c], known[c].first, known[c].last])
+]);
+$('#exLevel').onclick = () => exportCSV(`识字关卡_${todayStr()}.csv`, [
+  ['关卡', '是否完成', '完成日期', '完成度'],
+  ...LEVELS.map((arr, i) => { const lv = i + 1, p = lvPct(lv); return [lv, p === 100 ? '是' : '否', levelDone[lv] || '', p + '%']; })
+]);
+
+if (settings.reduce) document.body.classList.add('reduce');
+document.addEventListener('keydown', e => {
+  if (!S || !$('#test').classList.contains('on')) return;
+  if (e.key === '1') judge('读对了');
+  else if (e.key === '2') judge('读错了');
+  else if (e.key === '3') judge('没读');
+  else if (e.key === ' ') { e.preventDefault(); toggleRec(); }
+});
+
+renderMap();
+</script>
+</body>
+</html>
